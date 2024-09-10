@@ -9,20 +9,34 @@ var hbox := HBoxContainer.new()
 func _enter_tree() -> void:
 	var project_list: Node = helpers.extract_node([0, 1, 0, 1, 0, 1, 0, 0])
 	var vbox: VBoxContainer = project_list.get_child(0, true)
-	#vbox.add_child(hbox)
-	#vbox.move_child(hbox, 0)
+	var temp_btn := Button.new()
 	
 	
 	gdx.render(func(): return (
 		[project_list, [
-			[VBoxContainer, [
+			[VBoxContainer, {
+				size_flags_horizontal = SIZE_EXPAND_FILL
+			}, [
 				[hbox, [
 					[Button, {
 						text = "Temp Project",
-						on_pressed = func():
-							var new_path := helpers.create_project(Paths.global.path_join("project-manager/temp-project/.project/"))
-							print(new_path)
-							open_project(new_path)
+						on_gui_input = func(event: InputEvent):
+							if event is InputEventMouseButton:
+								if event.button_index == MOUSE_BUTTON_LEFT and event.double_click:
+									var base_path := Paths.global.path_join("project-manager/temp-project/.project/")
+									erase_dir(base_path)
+									var new_path := helpers.create_project(base_path)
+									var cfg := ConfigFile.new()
+									cfg.load(new_path)
+									cfg.set_value(
+										"rendering", 
+										"renderer/rendering_method", 
+										"gl_compatibility"
+									)
+									cfg.save(new_path)
+									open_project(new_path)
+									get_tree().quit()
+									#temp_btn.disabled = true
 							pass,
 					}],
 					[Button, {
@@ -34,7 +48,13 @@ func _enter_tree() -> void:
 		]]
 	))
 
-
+func erase_dir(path: String):
+	print('erasing ', path)
+	for dname in DirAccess.get_directories_at(path):
+		erase_dir(path.path_join(dname))
+	for fname in DirAccess.get_files_at(path):
+		DirAccess.remove_absolute(path.path_join(fname))
+	DirAccess.remove_absolute(path)
 
 func open_project(path: String):
 	OS.create_instance([path, "-editor"])
